@@ -12,3 +12,4 @@ packages:
       # Backported getCurrentProcessId, needed for beam-sqlite
       git: https://github.com/input-output-hk/win32.git
       commit: 8880b8e19e973797ce8cddeec976461074193652
+      extra-dep: true
