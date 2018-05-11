@@ -65,6 +65,7 @@ import           Network.URI
 import qualified System.Posix.Process as Unix
 #elif defined(WINDOWS)
 import qualified System.Win32.Process as Win32
+import           Control.Concurrent (myThreadId)
 #else
 #error Need either POSIX or Win32 API for MonadBeamInsertReturning
 #endif
@@ -271,13 +272,6 @@ insertReturning tbl@(DatabaseEntity (DatabaseTable tblNm _)) vs =
 
 
 
-#if defined(WINDOWS)
-#if !MIN_VERSION_Win32(2,4,0)
-foreign import WINDOWS_CCONV unsafe "windows.h GetCurrentProcessId"
-    c_GetCurrentProcessId :: IO ProcessId
-#endif
-#endif
-
 getProcessID :: IO String
 #ifdef UNIX
 getProcessID = show <$> Unix.getProcessID
@@ -285,7 +279,9 @@ getProcessID = show <$> Unix.getProcessID
 #if MIN_VERSION_Win32(2,4,0)
 getProcessID = show <$> Win32.getCurrentProcessId
 #else
-getProcessID = show <$> c_GetCurrentProcessId
+-- Bogus placeholder, but with enough randomness and criteria to be used
+-- in the call to 'runInsertReturningList'.
+getProcessID = T.unpack . snd . T.breakOnEnd " " . T.pack . show <$> myThreadId
 #endif
 #else
 #error Need either POSIX or Win32 API for MonadBeamInsertReturning
