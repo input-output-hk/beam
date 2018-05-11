@@ -62,9 +62,10 @@ import           Data.Semigroup
 import           Network.URI
 
 #ifdef UNIX
-import           System.Posix.Process (getProcessID)
+import qualified System.Posix.Process as Unix
 #elif defined(WINDOWS)
-import           System.Win32.Process (getCurrentProcessId)
+import qualified System.Win32.Process as Win32
+import           Control.Concurrent (myThreadId)
 #else
 #error Need either POSIX or Win32 API for MonadBeamInsertReturning
 #endif
@@ -269,6 +270,23 @@ insertReturning tbl@(DatabaseEntity (DatabaseTable tblNm _)) vs =
     SqlInsertNoRows ->
       SqliteInsertReturningNoRows
 
+
+
+getProcessID :: IO String
+#ifdef UNIX
+getProcessID = show <$> Unix.getProcessID
+#elif defined(WINDOWS)
+#if MIN_VERSION_Win32(2,4,0)
+getProcessID = show <$> Win32.getCurrentProcessId
+#else
+-- Bogus placeholder, but with enough randomness and criteria to be used
+-- in the call to 'runInsertReturningList'.
+getProcessID = T.unpack . snd . T.breakOnEnd " " . T.pack . show <$> myThreadId
+#endif
+#else
+#error Need either POSIX or Win32 API for MonadBeamInsertReturning
+#endif
+
 -- | Runs a 'SqliteInsertReturning' statement and returns a result for each
 -- inserted row.
 runInsertReturningList :: FromBackendRow Sqlite (table Identity)
@@ -279,13 +297,7 @@ runInsertReturningList (SqliteInsertReturning nm insertStmt_) =
   do (logger, conn) <- SqliteM ask
      SqliteM . liftIO $ do
 
-#ifdef UNIX
-       processId <- fromString . show <$> getProcessID
-#elif defined(WINDOWS)
-       processId <- fromString . show <$> getCurrentProcessId
-#else
-#error Need either POSIX or Win32 API for MonadBeamInsertReturning
-#endif
+       processId <- fromString <$> getProcessID
 
        let startSavepoint =
              execute_ conn (Query ("SAVEPOINT insert_savepoint_" <> processId))
