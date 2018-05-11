@@ -1,9 +1,14 @@
 #resolver: lts-9.0
 #resolver: lts-10.3
-resolver: lts-11.2
+#resolver: lts-11.2
+resolver: lts-9.1
 packages:
   - beam-sqlite
   - beam-postgres
   - beam-core
   - beam-migrate
-  - beam-migrate-cli
+
+  - location:
+      # Backported getCurrentProcessId, needed for beam-sqlite
+      git: https://github.com/input-output-hk/win32.git
+      commit: 8880b8e19e973797ce8cddeec976461074193652
